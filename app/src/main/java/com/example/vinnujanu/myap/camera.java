@@ -10,12 +10,23 @@ import android.provider.SyncStateContract;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 //import com.android.internal.http.multipart.MultipartEntity;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.error.VolleyError;
+import com.android.volley.request.SimpleMultiPartRequest;
+import com.android.volley.request.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -23,6 +34,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
@@ -44,7 +58,7 @@ public class camera extends AppCompatActivity {
     Button submit;
 
 
-    String url="http://172.17.76.125:8000/upload/";
+
 
 
     String roll,course;
@@ -71,10 +85,45 @@ public class camera extends AppCompatActivity {
         submit.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                // TODO Auto-generated method stub
-                uploadFile(url,img1fp,img2fp);
+
+                RequestQueue queue = Volley.newRequestQueue(camera.this);
+                final String url="http:172.17.76.125:8000/upload/";
+                StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                        new Response.Listener<String>()
+                        {
+                            @Override
+                            public void onResponse(String response) {
+                                Log.d("Response", response);
+                            }
+                        },
+                        new Response.ErrorListener()
+                        {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+
+                            }
+                        }
+                ) {
+                    @Override
+                    protected Map<String, String> getParams()
+                    {
+                        Map<String, String> params = new HashMap<String, String>();
+                        params.put("Rollno", roll);
+
+                        params.put("img1",img1fp);
+                        params.put("Course", course);
+                        params.put("img2",img2fp);
+                        return params;
+                    }
+                };
+                queue.add(postRequest);
+
+
                 System.exit(0);
             }
+
+
+
         });
         btnCamera0.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -92,93 +141,37 @@ public class camera extends AppCompatActivity {
 
             }
         });
-       // getImageFileFromSDCard();
     }
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
 
             super.onActivityResult(requestCode, resultCode, data);
             if( resultCode == RESULT_OK){
-                Bitmap bitmap = (Bitmap)data.getExtras().get("data");
-
-                String partFilename = currentDateFormat();
-                storeCameraPhotoInSDCard(bitmap, partFilename);
-
-                // display the image from SD Card to ImageView Control
-                String storeFilename = "photo_" + partFilename + ".jpg";
-                File imageFile = new File(Environment.getExternalStorageDirectory() + storeFilename);
-                if(requestCode==20)
-                    img1fp=imageFile.getAbsolutePath();
-                else
-                    img2fp=imageFile.getAbsolutePath();
-
-                //Bitmap mBitmap = getImageFileFromSDCard(storeFilename);
                 Bitmap bitma=(Bitmap)data.getExtras().get("data");
-               if(requestCode==20)
+               if(requestCode==20) {
                    imageView.setImageBitmap(bitma);
-               else
+                   ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                   bitma.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+                   byte[] byteArray = byteArrayOutputStream .toByteArray();
+                   img1fp= android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT);
+               }
+               else {
                    imageVieww2.setImageBitmap(bitma);
-
+                   ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                   bitma.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+                   byte[] byteArray = byteArrayOutputStream .toByteArray();
+                   img2fp= android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT);
+               }
             }
 
     }
-    public  String uploadFile(String url, String filepath,String filepath2) {
-        try {
-            //client.getParams().setParameter("http.socket.timeout", 90000); // 90 second
-            HttpPost post = new HttpPost(url);
-            HttpClient client=new DefaultHttpClient();
-
-            MultipartEntity mpEntity = new MultipartEntity();
-            mpEntity.addPart("Rollno",new StringBody(roll));
-            mpEntity.addPart("Course",new StringBody(course));
-
-            mpEntity.addPart("img1", new FileBody(new File(filepath), "image/jpeg"));
-            mpEntity.addPart("img2",new FileBody(new File(filepath2),"image/jpeg"));
-            post.setEntity(mpEntity);
-
-            HttpResponse response = client.execute(post);
-            if (response.getStatusLine().getStatusCode() != 200) { return "false"; }
-            else return "true";
-        } catch (Exception e) {
-           // if (SyncStateContract.Constants.DEBUG) e.printStackTrace();
-
-            return "false";
-        }
-    }
-    private String currentDateFormat(){
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HH_mm_ss");
-        String  currentTimeStamp = dateFormat.format(new Date());
-        return currentTimeStamp;
-    }
-
-    private void storeCameraPhotoInSDCard(Bitmap bitmap, String currentDate){
-        File outputFile = new File(Environment.getExternalStorageDirectory(), "photo_" + currentDate + ".jpg");
-        try {
-            FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
-            fileOutputStream.flush();
-            fileOutputStream.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
 
 
 
 
-    /*private Bitmap getImageFileFromSDCard(){
-        Bitmap bitmap = null;
-        File imageFile = new File(Environment.getExternalStorageDirectory()+FileName);
-        img1fp=imageFile.getAbsolutePath();
-        try {
-            FileInputStream fis = new FileInputStream(imageFile);
-            bitmap = BitmapFactory.decodeStream(fis);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        return bitmap;
-    }*/
+
+
+
+
+
 }

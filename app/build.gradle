@@ -30,5 +30,6 @@ dependencies {
     implementation('org.apache.httpcomponents:httpmime:4.3') {
         exclude module: "httpclient"
     }
+    implementation 'dev.dworks.libs:volleyplus:+'
 
 }
